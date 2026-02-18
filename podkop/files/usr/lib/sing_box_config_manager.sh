@@ -1077,10 +1077,12 @@ sing_box_cm_add_route_rule() {
     local inbound="$3"
     local outbound="$4"
 
+    inbound=$(_normalize_arg "$inbound")
+
     echo "$config" | jq \
         --arg service_tag "$SERVICE_TAG" \
         --arg tag "$tag" \
-        --arg inbound "$inbound" \
+        --argjson inbound "$inbound" \
         --arg outbound "$outbound" \
         '.route.rules += [{
             action: "route",

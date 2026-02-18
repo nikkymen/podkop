@@ -608,6 +608,13 @@ sing_box_configure_inbounds() {
     config=$(
         sing_box_cm_add_direct_inbound "$config" "$SB_DNS_INBOUND_TAG" "$SB_DNS_INBOUND_ADDRESS" "$SB_DNS_INBOUND_PORT"
     )
+
+    local service_listen_address
+    service_listen_address="$(get_service_listen_address)"
+
+    config=$(
+        sing_box_cm_add_mixed_inbound "$config" "$SB_EXTERNAL_INBOUND_TAG" "$service_listen_address" 2055
+    )
 }
 
 sing_box_configure_outbounds() {
@@ -805,10 +812,13 @@ sing_box_configure_route() {
     fi
 
     local sniff_inbounds
-    sniff_inbounds=$(comma_string_to_json_array "$SB_TPROXY_INBOUND_TAG,$SB_DNS_INBOUND_TAG")
+    sniff_inbounds=$(comma_string_to_json_array "$SB_TPROXY_INBOUND_TAG,$SB_DNS_INBOUND_TAG","$SB_EXTERNAL_INBOUND_TAG")
     config=$(sing_box_cm_sniff_route_rule "$config" "inbound" "$sniff_inbounds")
 
     config=$(sing_box_cm_add_hijack_dns_route_rule "$config" "protocol" "dns")
+
+    local route_inbounds
+    route_inbounds=$(comma_string_to_json_array "$SB_TPROXY_INBOUND_TAG","$SB_EXTERNAL_INBOUND_TAG")
 
     local disable_quic
     config_get_bool disable_quic "settings" "disable_quic" 0
@@ -829,7 +839,7 @@ sing_box_configure_route() {
     config_get routing_excluded_ips "settings" "routing_excluded_ips"
     if [ -n "$routing_excluded_ips" ]; then
         rule_tag="$(gen_id)"
-        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$SB_TPROXY_INBOUND_TAG" "$SB_DIRECT_OUTBOUND_TAG")
+        config=$(sing_box_cm_add_route_rule "$config" "$rule_tag" "$route_inbounds" "$SB_DIRECT_OUTBOUND_TAG")
         config_list_foreach "settings" "routing_excluded_ips" exclude_source_ip_from_routing_handler "$rule_tag"
     fi
 
